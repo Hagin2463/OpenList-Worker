@@ -1,26 +1,30 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "openlist-work",
-  "main": "src/index.ts",
-  "compatibility_date": "2025-08-16",
-  "compatibility_flags": [
-    "nodejs_compat"
-  ],
-  "vars": {
-    "ENABLE_D1": true,
-    "REMOTE_D1": ""
-  },
-  "assets": {
-    "directory": "./public",
-    "binding": "ASSETS"
-  }, 
-  "kv_namespaces": [{
-    "binding": "KV_DATA",
-    "id": "your-kv-namespace-id"
-  }],
-  "d1_databases": [{
-    "binding": "D1_DATA",
-    "database_name": "openlist-db",
-    "database_id": "your-d1-database-id"
-  }]
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "openlist-work",
+	"main": "src/index.ts",
+	"compatibility_date": "2025-08-16",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"vars": {
+		"ENABLE_D1": true,
+		"REMOTE_D1": ""
+	},
+	"assets": {
+		"directory": "./public",
+		"binding": "ASSETS"
+	},
+	"kv_namespaces": [
+		{
+			"binding": "KV_DATA",
+			"id": "1fc0c2f4dff444a2b969786688b74667"
+		}
+	],
+	"d1_databases": [
+		{
+			"binding": "D1_DATA",
+			"database_name": "openlist-prod-db",
+			"database_id": "25e12207-72b1-4213-b61f-d0f47269f9ca"
+		}
+	]
 }
