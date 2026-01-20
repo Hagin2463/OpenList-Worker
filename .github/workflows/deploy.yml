@@ -68,4 +68,5 @@ jobs:
           wrangler d1 execute openlist-prod-db --remote --file=./schema.sql --binding=D1_DATA || echo "Schema already imported or failed (safe to ignore on subsequent runs)"
 
       - name: Show deployment URL
-        run: echo "Deployment URL: https://$(jq -r '.name' wrangler.jsonc).workers.dev"
+        run: |
+          echo "Deployment URL: https://$(jq -r '.name' wrangler.jsonc).workers.dev"
