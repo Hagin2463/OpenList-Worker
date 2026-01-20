@@ -63,4 +63,5 @@ jobs:
         run: npm run deploy
 
       - name: Show deployment URL
-        run: echo "Deployment URL: https://$(jq -r '.name' wrangler.jsonc).workers.dev"
+        run: |
+          echo "Deployment URL: https://$(jq -r '.name' wrangler.jsonc).workers.dev"
