@@ -1,0 +1,71 @@
+name: Deploy OpenList to Cloudflare Workers
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          cd pages
+          npm ci
+          cd ..
+
+      - name: Build frontend
+        run: |
+          cd pages
+          npm run build
+          cd ..
+
+      - name: Install Wrangler
+        run: npm install -g wrangler@latest
+
+      - name: Auto-create KV & D1 resources
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          wrangler deploy --dry-run --name openlist-back-work || true
+
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add wrangler.jsonc
+          git commit -m "Auto-update wrangler.jsonc with new KV/D1 IDs" || echo "No changes to commit"
+          git push
+
+      - name: Deploy to Cloudflare Workers
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy
+
+      - name: Import schema.sql to D1 (only first time)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          DATABASE_ID=$(jq -r '.d1_databases[0].database_id' wrangler.jsonc)
+          wrangler d1 execute openlist-prod-db --remote --file=./schema.sql --binding=D1_DATA || echo "Schema already imported or failed (safe to ignore on subsequent runs)"
+
+      - name: Show deployment URL
+        run: echo "Deployment URL: https://$(jq -r '.name' wrangler.jsonc).workers.dev"
