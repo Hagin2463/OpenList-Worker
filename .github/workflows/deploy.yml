@@ -1,9 +1,6 @@
-name: Deploy OpenList to Cloudflare Workers (Auto Create KV & D1)
+name: Deploy OpenList to Cloudflare Workers (Auto Create KV & D1 - Fixed)
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 jobs:
@@ -38,23 +35,29 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          # 创建 KV 命名空间，并**自动**添加到 wrangler.jsonc（--update-config --binding）
+          # 备份 wrangler.jsonc
+          cp wrangler.jsonc wrangler.jsonc.bak
+
+          # 使用 jq 清空 kv_namespaces 和 d1_databases 数组（避免重复 binding）
+          jq 'del(.kv_namespaces) | del(.d1_databases)' wrangler.jsonc > tmp.json && mv tmp.json wrangler.jsonc
+
+          # 创建 KV 并自动添加到 wrangler.jsonc（--update-config 会添加唯一条目）
           wrangler kv namespace create "KV_DATA" --update-config --binding "KV_DATA" || true
 
-          # 创建 D1 数据库，并**自动**添加到 wrangler.jsonc
+          # 创建 D1 并自动添加到 wrangler.jsonc
           wrangler d1 create openlist-prod-db --update-config --binding "D1_DATA" || true
 
-          # 等待 Wrangler 写文件完成
+          # 等待文件写入完成
           sleep 5
 
-          # 导入 schema.sql（--remote 表示远程执行）
+          # 导入 schema.sql
           wrangler d1 execute openlist-prod-db --remote --file=./schema.sql || true
 
-          # commit 修改后的 wrangler.jsonc（Wrangler 已自动添加 id）
+          # commit 修改后的 wrangler.jsonc
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           git add wrangler.jsonc
-          git commit -m "chore: auto-add KV and D1 bindings with IDs via --update-config" || echo "No changes to commit"
+          git commit -m "chore: auto-create and configure KV + D1 bindings without duplicates" || echo "No changes to commit"
           git push origin HEAD:main
 
       - name: Build frontend
