@@ -1,4 +1,4 @@
-name: Deploy OpenList to Cloudflare Workers
+name: Deploy OpenList to Cloudflare Workers (Auto Create KV & D1)
 
 on:
   push:
@@ -14,7 +14,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -30,27 +30,56 @@ jobs:
           npm ci
           cd ..
 
+      - name: Install Wrangler
+        run: npm install -g wrangler@latest
+
+      - name: Auto Create KV, D1 & Import Schema & Update wrangler.jsonc
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          # 创建 KV 命名空间（如果已存在会忽略）
+          wrangler kv namespace create "KV_DATA" || true
+
+          # 创建 D1 数据库（如果已存在会忽略）
+          wrangler d1 create openlist-prod-db || true
+
+          # 获取 KV ID（取最新创建的）
+          KV_ID=$(wrangler kv namespace list | jq -r '.[-1].id // empty')
+
+          # 获取 D1 ID
+          D1_ID=$(wrangler d1 info openlist-prod-db | grep "id:" | awk '{print $2}' || echo "")
+
+          # 如果获取不到，从 wrangler.jsonc 读取（防止重复）
+          if [ -z "$KV_ID" ]; then
+            KV_ID=$(jq -r '.kv_namespaces[0].id // empty' wrangler.jsonc)
+          fi
+          if [ -z "$D1_ID" ]; then
+            D1_ID=$(jq -r '.d1_databases[0].database_id // empty' wrangler.jsonc)
+          fi
+
+          # 导入 schema.sql（如果已存在表会忽略）
+          wrangler d1 execute openlist-prod-db --remote --file=./schema.sql || true
+
+          # 更新 wrangler.jsonc 中的 id（使用 jq 修改）
+          jq --arg kv_id "$KV_ID" \
+             --arg d1_id "$D1_ID" \
+             '.kv_namespaces[0].id = $kv_id | 
+              .d1_databases[0].database_id = $d1_id' \
+             wrangler.jsonc > tmp.json && mv tmp.json wrangler.jsonc
+
+          # commit 回仓库
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add wrangler.jsonc
+          git commit -m "chore: auto-fill KV and D1 IDs in wrangler.jsonc" || echo "No changes to commit"
+          git push origin HEAD:main
+
       - name: Build frontend
         run: |
           cd pages
           npm run build
           cd ..
-
-      - name: Install Wrangler
-        run: npm install -g wrangler@latest
-
-      - name: Auto-create KV & D1 resources
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          wrangler deploy --dry-run --name openlist-back-work || true
-
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          git add wrangler.jsonc
-          git commit -m "Auto-update wrangler.jsonc with new KV/D1 IDs" || echo "No changes to commit"
-          git push
 
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
@@ -59,14 +88,7 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy
 
-      - name: Import schema.sql to D1 (only first time)
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          DATABASE_ID=$(jq -r '.d1_databases[0].database_id' wrangler.jsonc)
-          wrangler d1 execute openlist-prod-db --remote --file=./schema.sql --binding=D1_DATA || echo "Schema already imported or failed (safe to ignore on subsequent runs)"
-
       - name: Show deployment URL
         run: |
-          echo "Deployment URL: https://$(jq -r '.name' wrangler.jsonc).workers.dev"
+          WORKER_NAME=$(jq -r '.name' wrangler.jsonc)
+          echo "Deployment URL: https://${WORKER_NAME}.workers.dev"
