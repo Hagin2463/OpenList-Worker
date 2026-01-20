@@ -15,14 +15,17 @@
 		"binding": "ASSETS"
 	},
 	// 临时注释掉KV和D1配置以便开发服务器能正常启动
-	"kv_namespaces": [
-
-	],
+	"kv_namespaces": [],
 	"d1_databases": [
 		{
 			"binding": "D1_DATA",
 			"database_name": "openlist-prod-db"
 			// database_id 留空，让 Actions 自动填充
+		},
+		{
+			"binding": "D1_DATA",
+			"database_name": "openlist-prod-db",
+			"database_id": "2e9f9eea-ca68-4486-b3ab-e5a253d7ed05"
 		}
 	],
 	"observability": {
