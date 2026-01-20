@@ -13,5 +13,14 @@
   "assets": {
     "directory": "./public",
     "binding": "ASSETS"
-  }
+  }, 
+  "kv_namespaces": [{
+    "binding": "KV_DATA",
+    "id": "your-kv-namespace-id"
+  }],
+  "d1_databases": [{
+    "binding": "D1_DATA",
+    "database_name": "openlist-db",
+    "database_id": "your-d1-database-id"
+  }]
 }
