@@ -25,7 +25,6 @@ jobs:
           npm install
           cd pages
           npm install
-          cd ..
 
       - name: Install Wrangler
         run: npm install -g wrangler@latest
