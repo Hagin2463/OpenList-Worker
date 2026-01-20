@@ -10,11 +10,11 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # 允许 commit 回仓库
+      contents: write
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -33,47 +33,28 @@ jobs:
       - name: Install Wrangler
         run: npm install -g wrangler@latest
 
-      - name: Auto Create KV, D1 & Import Schema & Update wrangler.jsonc
+      - name: Auto Create KV & D1 & Import Schema & Update wrangler.jsonc
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          # 创建 KV 命名空间，并自动添加到 wrangler.jsonc（--yes 强制非交互）
-          wrangler kv namespace create "KV_DATA" --yes || true
+          # 创建 KV 命名空间，并**自动**添加到 wrangler.jsonc（--update-config --binding）
+          wrangler kv namespace create "KV_DATA" --update-config --binding "KV_DATA" || true
 
-          # 创建 D1 数据库，并自动添加到 wrangler.jsonc（--yes 强制非交互）
-          wrangler d1 create openlist-prod-db --yes || true
+          # 创建 D1 数据库，并**自动**添加到 wrangler.jsonc
+          wrangler d1 create openlist-prod-db --update-config --binding "D1_DATA" || true
 
-          # 等待几秒，确保 Wrangler 写完了配置文件
+          # 等待 Wrangler 写文件完成
           sleep 5
 
-          # 强制刷新 wrangler.jsonc 中的 id（从文件读取最新值）
-          KV_ID=$(jq -r '.kv_namespaces[] | select(.binding=="KV_DATA").id // empty' wrangler.jsonc)
-          D1_ID=$(jq -r '.d1_databases[] | select(.binding=="D1_DATA").database_id // empty' wrangler.jsonc)
+          # 导入 schema.sql（--remote 表示远程执行）
+          wrangler d1 execute openlist-prod-db --remote --file=./schema.sql || true
 
-          # 如果 id 还没写上，再手动补充（极少发生）
-          if [ -z "$KV_ID" ]; then
-            KV_ID=$(wrangler kv namespace list | jq -r 'map(select(.title == "KV_DATA"))[-1].id // empty')
-          fi
-          if [ -z "$D1_ID" ]; then
-            D1_ID=$(wrangler d1 info openlist-prod-db | grep "id:" | awk '{print $2}' || echo "")
-          fi
-
-          # 确保 id 写入 wrangler.jsonc
-          jq --arg kv_id "$KV_ID" \
-             --arg d1_id "$D1_ID" \
-             '(.kv_namespaces[] | select(.binding=="KV_DATA")).id = $kv_id |
-              (.d1_databases[] | select(.binding=="D1_DATA")).database_id = $d1_id' \
-             wrangler.jsonc > tmp.json && mv tmp.json wrangler.jsonc
-
-          # 导入 schema.sql（--remote 表示远程 D1）
-          wrangler d1 execute openlist-prod-db --remote --file=./schema.sql --yes || true
-
-          # commit 修改后的 wrangler.jsonc 回仓库
+          # commit 修改后的 wrangler.jsonc（Wrangler 已自动添加 id）
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           git add wrangler.jsonc
-          git commit -m "chore: auto-fill KV and D1 IDs in wrangler.jsonc" || echo "No changes to commit"
+          git commit -m "chore: auto-add KV and D1 bindings with IDs via --update-config" || echo "No changes to commit"
           git push origin HEAD:main
 
       - name: Build frontend
