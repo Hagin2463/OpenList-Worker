@@ -1,35 +1,26 @@
 {
-	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "openlist-work",
-	"main": "src/index.ts",
-	"compatibility_date": "2025-08-16",
-	"compatibility_flags": [
-		"nodejs_compat"
-	],
-	"vars": {
-		"ENABLE_D1": true,
-		"REMOTE_D1": ""
-	},
-	"assets": {
-		"directory": "./public",
-		"binding": "ASSETS"
-	},
-	// 临时注释掉KV和D1配置以便开发服务器能正常启动
-	"kv_namespaces": [],
-	"d1_databases": [
-		{
-			"binding": "D1_DATA",
-			"database_name": "openlist-prod-db"
-			// database_id 留空，让 Actions 自动填充
-		},
-		{
-			"binding": "D1_DATA",
-			"database_name": "openlist-prod-db",
-			"database_id": "2e9f9eea-ca68-4486-b3ab-e5a253d7ed05"
-		}
-	],
-	"observability": {
-		"enabled": false,
-		"head_sampling_rate": 1
-	}
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "openlist-work",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-08-16",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "vars": {
+    "ENABLE_D1": true,
+    "REMOTE_D1": ""
+  },
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  }, 
+  "kv_namespaces": [{
+    "binding": "KV_DATA",
+    "id": "your-kv-namespace-id"
+  }],
+  "d1_databases": [{
+    "binding": "D1_DATA",
+    "database_name": "openlist-db",
+    "database_id": "your-d1-database-id"
+  }]
 }
