@@ -1,30 +1,17 @@
 {
-	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "openlist-work",
-	"main": "src/index.ts",
-	"compatibility_date": "2025-08-16",
-	"compatibility_flags": [
-		"nodejs_compat"
-	],
-	"vars": {
-		"ENABLE_D1": true,
-		"REMOTE_D1": ""
-	},
-	"assets": {
-		"directory": "./public",
-		"binding": "ASSETS"
-	},
-	"kv_namespaces": [
-		{
-			"binding": "KV_DATA",
-			"id": "1cf8ddcac73a42d8b98633fdca799c3e"
-		}
-	],
-	"d1_databases": [
-		{
-			"binding": "D1_DATA",
-			"database_name": "openlist-prod-db",
-			"database_id": "3941baf2-b41b-4a9e-adbf-f16507574138"
-		}
-	]
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "openlist-work",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-08-16",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "vars": {
+    "ENABLE_D1": true,
+    "REMOTE_D1": ""
+  },
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  }
 }
