@@ -22,46 +22,45 @@ jobs:
 
       - name: Install dependencies
         run: |
-          npm install
+          npm ci
           cd pages
-          npm install
+          npm ci
+          cd ..
 
       - name: Install Wrangler
         run: npm install -g wrangler@latest
 
-      - name: Auto Create KV & D1 & Import Schema & Update wrangler.jsonc
+      - name: Auto Create KV & D1 & Update Config
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
-          # 备份 wrangler.jsonc
-          cp wrangler.jsonc wrangler.jsonc.bak
-
-          # 使用 jq 清空 kv_namespaces 和 d1_databases 数组（避免重复 binding）
+          # 清空原有 KV/D1 配置（防止重复）
           jq 'del(.kv_namespaces) | del(.d1_databases)' wrangler.jsonc > tmp.json && mv tmp.json wrangler.jsonc
 
-          # 创建 KV 并自动添加到 wrangler.jsonc（--update-config 会添加唯一条目）
+          # 创建 KV 并自动写入配置
           wrangler kv namespace create "KV_DATA" --update-config --binding "KV_DATA" || true
 
-          # 创建 D1 并自动添加到 wrangler.jsonc
+          # 创建 D1 并自动写入配置
           wrangler d1 create openlist-prod-db --update-config --binding "D1_DATA" || true
 
-          # 等待文件写入完成
           sleep 5
 
           # 导入 schema.sql
           wrangler d1 execute openlist-prod-db --remote --file=./schema.sql || true
 
-          # commit 修改后的 wrangler.jsonc
+          # commit 更新后的 wrangler.jsonc
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           git add wrangler.jsonc
-          git commit -m "chore: auto-create and configure KV + D1 bindings without duplicates" || echo "No changes to commit"
+          git commit -m "chore: auto-configure KV & D1 bindings" || echo "No changes"
           git push origin HEAD:main
 
-      - name: Deploy to Cloudflare Workers
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy
+      - name: Build & Deploy (使用项目自带 npm run deploy)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npm run deploy
+
+      - name: Show deployment URL
+        run: echo "Deployment URL: https://$(jq -r '.name' wrangler.jsonc).workers.dev"
