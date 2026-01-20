@@ -22,9 +22,9 @@ jobs:
 
       - name: Install dependencies
         run: |
-          npm ci
+          npm install
           cd pages
-          npm ci
+          npm install
           cd ..
 
       - name: Install Wrangler
@@ -59,12 +59,6 @@ jobs:
           git add wrangler.jsonc
           git commit -m "chore: auto-create and configure KV + D1 bindings without duplicates" || echo "No changes to commit"
           git push origin HEAD:main
-
-      - name: Build frontend
-        run: |
-          cd pages
-          npm run build
-          cd ..
 
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
