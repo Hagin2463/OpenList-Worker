@@ -16,14 +16,7 @@
 	},
 	// 临时注释掉KV和D1配置以便开发服务器能正常启动
 	"kv_namespaces": [
-		{
-			"binding": "KV_DATA"
-			// id 留空，让 Actions 自动填充
-		},
-		{
-			"binding": "KV_DATA",
-			"id": "22bfbd3512ee49a28014a736bb04b6a1"
-		}
+
 	],
 	"d1_databases": [
 		{
